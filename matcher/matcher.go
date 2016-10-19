@@ -8,14 +8,14 @@ import (
     "github.com/texttheater/golang-levenshtein/levenshtein"
 );
 
-type datum struct {
+type Datum struct {
     Name string `json:"name"`
     Id string `json:"id"`
     Keywords []string `json:"keywords"`
 };
 
 type Matcher struct {
-    source []datum
+    source []Datum
     names []string
 }
 
@@ -41,9 +41,13 @@ func NewMatcher ( filename string ) Matcher {
     return Matcher { source: loadSource( rawJson ) };
 }
 
-func loadSource ( rawJson []byte ) []datum {
+func ( matcher Matcher ) SetSource ( rawJson []byte ) {
+    matcher.source = loadSource( rawJson );
+}
 
-    var source []datum;
+func loadSource ( rawJson []byte ) []Datum {
+
+    var source []Datum;
 
     err := json.Unmarshal( rawJson, &source );
     checkErr( err );
@@ -51,14 +55,17 @@ func loadSource ( rawJson []byte ) []datum {
     return source;
 }
 
-func ( matcher Matcher ) Match ( name string, keywords []string ) []datum {
+func ( matcher Matcher ) Match ( name string, keywords []string ) []Datum {
+    var matches []Datum = make([]Datum, len(matcher.source));
+    var n = 0;
     for _, item := range matcher.source {
         var score int = levenshtein.DistanceForStrings([]rune(name), []rune(item.Name),levenshtein.DefaultOptions);
         if ( score < 2 ){
-            log.Printf( "%s - %s: %d", name, item.Name, score );
+            matches[n] = item;
+            n++;
         }
     }
-    return matcher.source;
+    return matches;
 }
 
 func checkErr ( err error ) {
