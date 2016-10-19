@@ -1,0 +1,11 @@
+{
+    "ImportPath": "github.com/patmooney/captaingo",
+    "Deps": [
+        {
+            "ImportPath": "github.com/davecgh/go-spew/spew"
+        },
+        {
+            "ImportPath": "github.com/texttheater/golang-levenshtein"
+        }
+    ]
+}

@@ -1,0 +1,5 @@
+[
+    { "name": "City of London", "id": "12345", "keywords": [ "London", "Greater London", "England", "United Kingdom" ] },
+    { "name": "Beijing", "id": "aabbcc", "keywords": [ "China" ] },
+    { "name": "北京", "id": "aabbcc", "keywords": [ "China" ] }
+]

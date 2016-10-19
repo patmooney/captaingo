@@ -83,7 +83,7 @@ var captain matcher.Matcher;
         {
             "name": "City of London",
             "id": 12345,
-            "keywords": "City of London, Greater London, England, United Kingdom"
+            "keywords": ["City of London", "Greater London", "England", "United Kingdom"]
         },
         ...
     ]
@@ -98,4 +98,8 @@ func main () {
     }
 
     captain = matcher.NewMatcher( *filenamePtr );
+    //captain.SerialiseSource();
+
+    captain.Match("City of London", []string{"Greater London"});
+    captain.Match("北京", []string{"China"});
 }
