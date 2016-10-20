@@ -6,6 +6,7 @@ import (
     "encoding/json"
     "github.com/davecgh/go-spew/spew"
     "github.com/texttheater/golang-levenshtein/levenshtein"
+//    "fmt"
 );
 
 /*
@@ -21,7 +22,7 @@ import (
 
         // my-source.json
         [
-            { "name": "George Harrison", "id": 12345, "keywords": [ "Ringo", "Beatles", "Paul" ] },
+            { "name": "George Harrison", "normalised_name": "george harrison", "id": 12345, "keywords": [ "Ringo", "Beatles", "Paul" ] },
             ...
         ]
 
@@ -35,9 +36,10 @@ import (
 
 // Datum is one element of the structured data which Matcher expresses it's input/output
 type Datum struct {
-    Name string `json:"name"`
-    Id string `json:"id"`
-    Keywords []string `json:"keywords"`
+    Name        string `json:"name"`
+    Id          string `json:"id"`
+    Keywords    []string `json:"keywords"`
+    Normalised  string `json:"normalised_name"`
 };
 
 type Matcher struct {
@@ -88,8 +90,18 @@ func ( matcher *Matcher ) Match ( name string, keywords []string ) []Datum {
     var matches []Datum = make([]Datum, len(matcher.source));
     var n = 0;
     for _, item := range matcher.source {
-        var score int = levenshtein.DistanceForStrings([]rune(name), []rune(item.Name),levenshtein.DefaultOptions);
-        if ( score < 2 ){
+        var score int = levenshtein.DistanceForStrings(
+            []rune(name),
+            []rune(item.Normalised),
+            levenshtein.Options{
+                InsCost: 1,
+                DelCost: 1,
+                SubCost: 1,
+                Matches: levenshtein.DefaultOptions.Matches,
+            },
+        );
+        // fmt.Printf( "%s: %d", item.Normalised, score );
+        if ( score < 3 ){
             matches[n] = item;
             n++;
         }

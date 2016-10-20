@@ -3,10 +3,12 @@ package main;
 import (
     "flag"
     "log"
+    "net/http"
     "github.com/patmooney/captaingo/matcher"
+    "time"
+    "fmt"
+    "strings"
 );
-
-var captain matcher.Matcher;
 
 /*
     Captain Go
@@ -28,6 +30,7 @@ var captain matcher.Matcher;
             "matches": [
                 {
                     "name": "City of London",
+                    "normalised_name": "city of london",
                     "id": 12345,
                     "keywords": "City of London, Greater London, England, United Kingdom",
                     "score": 0
@@ -89,6 +92,8 @@ var captain matcher.Matcher;
     ]
 */
 
+var captain matcher.Matcher;
+
 func main () {
     var filenamePtr *string = flag.String( "source", "", "filename from which to source data" );
     flag.Parse();
@@ -98,8 +103,20 @@ func main () {
     }
 
     captain = matcher.NewMatcher( *filenamePtr );
-    //captain.SerialiseSource();
 
-    captain.Match("City of London", []string{"Greater London"});
-    captain.Match("北京", []string{"China"});
+    http.HandleFunc( "/bar", func(w http.ResponseWriter, r *http.Request) {
+        keyword := strings.ToLower( r.FormValue("q") );
+        var datum []matcher.Datum = captain.Match(keyword, []string{});
+        w.Write( []byte(fmt.Sprintf( "%s - %s", datum[0].Name, datum[0].Id )) );
+    });
+
+    s := &http.Server{
+        Addr:           ":8080",
+        ReadTimeout:    10 * time.Second,
+        WriteTimeout:   10 * time.Second,
+        MaxHeaderBytes: 1 << 20,
+    }
+    log.Fatal(s.ListenAndServe())
 }
+
+
