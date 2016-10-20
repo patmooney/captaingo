@@ -33,6 +33,7 @@ import (
 
 */
 
+// Datum is one element of the structured data which Matcher expresses it's input/output
 type Datum struct {
     Name string `json:"name"`
     Id string `json:"id"`
@@ -44,6 +45,7 @@ type Matcher struct {
     names []string
 }
 
+// Names returns a []string of all Names in the source data
 func ( matcher *Matcher ) Names () []string {
     if len(matcher.names) > 0 {
         return matcher.names;
@@ -56,6 +58,7 @@ func ( matcher *Matcher ) Names () []string {
     return matcher.names;
 }
 
+// NewMatcher "instantiates" the Matcher for your and loads the source from a given filename
 func NewMatcher ( filename string ) Matcher {
     var rawJson []byte;
 
@@ -65,6 +68,7 @@ func NewMatcher ( filename string ) Matcher {
     return Matcher { source: loadSource( rawJson ) };
 }
 
+// SetSource allows you to specify the source as a string rather than from a file
 func ( matcher *Matcher ) SetSource ( rawJson []byte ) {
     matcher.source = loadSource( rawJson );
 }
@@ -79,6 +83,7 @@ func loadSource ( rawJson []byte ) []Datum {
     return source;
 }
 
+// Match for matching a single name against the current source data
 func ( matcher *Matcher ) Match ( name string, keywords []string ) []Datum {
     var matches []Datum = make([]Datum, len(matcher.source));
     var n = 0;
