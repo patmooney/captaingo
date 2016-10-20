@@ -1,4 +1,4 @@
-## Captain Go
+## Captain Go - WIP
 
 For creating a very simple keyword search for mapping input strings against a
 predefined set. Uses Levenshtein distance (https://en.wikipedia.org/wiki/Levenshtein_distance).
