@@ -8,6 +8,31 @@ import (
     "github.com/texttheater/golang-levenshtein/levenshtein"
 );
 
+/*
+    Matcher
+
+    A very simple keyword comparison module for scoring the similarity between
+    your input string and a predifined set
+
+    - Uses Levenshtein distance ( lower score is better )
+    - Accepts supporting keywords/context strings which allow for more accurate results
+
+    Usage:
+
+        // my-source.json
+        [
+            { "name": "George Harrison", "id": 12345, "keywords": [ "Ringo", "Beatles", "Paul" ] },
+            ...
+        ]
+
+        // main.go
+        var filename string = "my-source.json" ( []Datum );
+        var matcher matcher.Matcher = matcher.NewMatcher( filename );
+        var matches []matcher.Datum = matcher.Match( "George", []string{"John", "Paul", "Ringo"} );
+        log.Println(matches[0].Name); // George Harrison
+
+*/
+
 type Datum struct {
     Name string `json:"name"`
     Id string `json:"id"`
@@ -19,8 +44,7 @@ type Matcher struct {
     names []string
 }
 
-
-func ( matcher Matcher ) Names () []string {
+func ( matcher *Matcher ) Names () []string {
     if len(matcher.names) > 0 {
         return matcher.names;
     }
@@ -41,7 +65,7 @@ func NewMatcher ( filename string ) Matcher {
     return Matcher { source: loadSource( rawJson ) };
 }
 
-func ( matcher Matcher ) SetSource ( rawJson []byte ) {
+func ( matcher *Matcher ) SetSource ( rawJson []byte ) {
     matcher.source = loadSource( rawJson );
 }
 
@@ -55,7 +79,7 @@ func loadSource ( rawJson []byte ) []Datum {
     return source;
 }
 
-func ( matcher Matcher ) Match ( name string, keywords []string ) []Datum {
+func ( matcher *Matcher ) Match ( name string, keywords []string ) []Datum {
     var matches []Datum = make([]Datum, len(matcher.source));
     var n = 0;
     for _, item := range matcher.source {
@@ -74,6 +98,6 @@ func checkErr ( err error ) {
     }
 }
 
-func ( matcher Matcher ) SerialiseSource () {
+func ( matcher *Matcher ) SerialiseSource () {
     spew.Dump( matcher.source );
 }

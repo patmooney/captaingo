@@ -13,6 +13,7 @@ func TestMatch(t *testing.T) {
     if len(matches) <= 0 {
         t.FailNow();
     }
+
     if matches[0].Name != "London" {
         t.Error( "Expected London to be the first match" );
     }
