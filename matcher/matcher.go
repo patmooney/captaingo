@@ -7,6 +7,7 @@ import (
     "github.com/davecgh/go-spew/spew"
     "github.com/texttheater/golang-levenshtein/levenshtein"
     "sort"
+    "math"
 //    "fmt"
 );
 
@@ -92,20 +93,27 @@ func ( matcher *Matcher ) Match ( name string, keywords []string ) []Datum {
     var matches []Datum = make([]Datum, len(matcher.source));
     var n = 0;
     for _, item := range matcher.source {
-        var score int = levenshtein.DistanceForStrings(
-            []rune(name),
-            []rune(item.Normalised),
-            levenshtein.Options{
-                InsCost: 1,
-                DelCost: 1,
-                SubCost: 1,
-                Matches: levenshtein.DefaultOptions.Matches,
-            },
-        );
-        if ( score < 3 ){
-            item.Score = score;
-            matches[n] = item;
-            n++;
+
+        var diff float64 = math.Abs( float64(len(name) - len(item.Normalised)) )
+
+        if diff < 3 {
+
+            var score int = levenshtein.DistanceForStrings(
+                []rune(name),
+                []rune(item.Normalised),
+                levenshtein.Options{
+                    InsCost: 1,
+                    DelCost: 1,
+                    SubCost: 1,
+                    Matches: levenshtein.DefaultOptions.Matches,
+                },
+            );
+            if ( score < 3 ){
+                item.Score = score;
+                matches[n] = item;
+                n++;
+            }
+
         }
     }
     return sortByScore( matches[0:n] );
