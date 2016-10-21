@@ -8,7 +8,8 @@ import (
     "github.com/texttheater/golang-levenshtein/levenshtein"
     "sort"
     "math"
-//    "fmt"
+    "time"
+    "fmt"
 );
 
 /*
@@ -89,14 +90,16 @@ func loadSource ( rawJson []byte ) []Datum {
 }
 
 // Match for matching a single name against the current source data
-func ( matcher *Matcher ) Match ( name string, keywords []string ) []Datum {
+func ( matcher *Matcher ) Match ( name string, keywords []string, maxScore int ) []Datum {
     var matches []Datum = make([]Datum, len(matcher.source));
     var n = 0;
+
+    then := makeTimestamp();
+
     for _, item := range matcher.source {
 
-        var diff float64 = math.Abs( float64(len(name) - len(item.Normalised)) )
-
-        if diff < 3 {
+        var lenDiff float64 = math.Abs( float64(len(name) - len(item.Normalised)) )
+        if lenDiff < float64(maxScore) {
 
             var score int = levenshtein.DistanceForStrings(
                 []rune(name),
@@ -108,7 +111,8 @@ func ( matcher *Matcher ) Match ( name string, keywords []string ) []Datum {
                     Matches: levenshtein.DefaultOptions.Matches,
                 },
             );
-            if ( score < 3 ){
+
+            if ( score < maxScore ){
                 item.Score = score;
                 matches[n] = item;
                 n++;
@@ -116,7 +120,14 @@ func ( matcher *Matcher ) Match ( name string, keywords []string ) []Datum {
 
         }
     }
+
+    fmt.Println( "took: %d", makeTimestamp() - then );
+
     return sortByScore( matches[0:n] );
+}
+
+func makeTimestamp() int64 {
+    return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
 type sortedMatches struct {
@@ -161,4 +172,50 @@ func checkErr ( err error ) {
 
 func ( matcher *Matcher ) SerialiseSource () {
     spew.Dump( matcher.source );
+}
+
+func getDistance ( s []rune, t []rune ) int {
+
+    var n int = len(s);
+    var m int = len(t);
+
+    if (n == 0) {
+        return m;
+    } else if (m == 0) {
+        return n;
+    }
+
+    var p []int = make([]int, n+1);
+    var d []int = make([]int, n+1);
+    var _d []int;
+    var t_j rune;
+    var cost int;
+
+    for i := 0; i <= n; i++ {
+        p[i] = i;
+    }
+
+    for j := 1; j <= m; j++ {
+        t_j = t[j-1];
+        d[0] = j;
+
+        for i := 1; i <= n; i++ {
+
+            if s[i-1] == t_j {
+                cost = 0;
+            } else {
+                cost = 1;
+            }
+
+            x := math.Min(float64(d[i-1]+1), float64(p[i]+1))
+            z := float64(p[i-1]+cost);
+            d[i] = int(math.Min(x, z));
+        }
+
+        _d = p;
+        p = d;
+        d = _d;
+    }
+
+    return p[n];
 }

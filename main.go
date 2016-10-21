@@ -127,6 +127,7 @@ func main () {
         WriteTimeout:   10 * time.Second,
         MaxHeaderBytes: 1 << 20,
     }
+    fmt.Println("Starting server...");
     log.Fatal(s.ListenAndServe())
 }
 
@@ -142,7 +143,7 @@ func handleGet ( w http.ResponseWriter, r *http.Request ) {
         return;
     }
 
-    var datum []matcher.Datum = captain.Match(query, keywords);
+    var datum []matcher.Datum = captain.Match(query, keywords, 3);
 
     json, err := json.Marshal(SingleResponse{
         Total: len(datum),
