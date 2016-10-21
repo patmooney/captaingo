@@ -10,6 +10,7 @@ import (
     "math"
     "time"
     "fmt"
+    "sync"
 );
 
 /*
@@ -39,11 +40,12 @@ import (
 
 // Datum is one element of the structured data which Matcher expresses it's input/output
 type Datum struct {
-    Name        string `json:"name"`
-    Id          string `json:"id"`
-    Keywords    []string `json:"keywords"`
-    Normalised  string `json:"normalised_name"`
-    Score       int `json:"score"`
+    Name            string `json:"name"`
+    Id              string `json:"id"`
+    Keywords        []string `json:"keywords"`
+    Normalised      string `json:"normalised_name"`
+    normalisedRunes []rune
+    Score           int `json:"score"`
 };
 
 type Matcher struct {
@@ -86,42 +88,78 @@ func loadSource ( rawJson []byte ) []Datum {
     err := json.Unmarshal( rawJson, &source );
     checkErr( err );
 
+    fmt.Println("Runification...");
+    for i, item := range source {
+        source[i].normalisedRunes = []rune(item.Normalised);
+    }
+
     return source;
 }
 
 // Match for matching a single name against the current source data
+// creates a channel, runs 4 go funcs with a quarter slice of the
+// possible matches each, will only find the 
 func ( matcher *Matcher ) Match ( name string, keywords []string, maxScore int ) []Datum {
-    var matches []Datum = make([]Datum, len(matcher.source));
-    var n = 0;
 
     then := makeTimestamp();
+    var nameRunes []rune = []rune(name);
+    var wg sync.WaitGroup;
+    var groupSize = int( len(matcher.source) / 4 );
+    matchChan := make(chan int, 100);
 
-    for _, item := range matcher.source {
+    var n int = 0;
 
-        var lenDiff float64 = math.Abs( float64(len(name) - len(item.Normalised)) )
-        if lenDiff < float64(maxScore) {
+    for g := 0; g < 4; g++ {
 
-            var score int = levenshtein.DistanceForStrings(
-                []rune(name),
-                []rune(item.Normalised),
-                levenshtein.Options{
-                    InsCost: 1,
-                    DelCost: 1,
-                    SubCost: 1,
-                    Matches: levenshtein.DefaultOptions.Matches,
-                },
-            );
+        wg.Add(1);
 
-            if ( score < maxScore ){
-                item.Score = score;
-                matches[n] = item;
-                n++;
+        go func ( start int, max int, matchChan chan int, matcher *Matcher, currentN *int ) {
+            if max > len(matcher.source) {
+                max = len(matcher.source);
             }
+            for i := start; i < max; i++ {
 
-        }
+                if ( *currentN >= 100 ){
+                    break;
+                }
+
+                var item Datum = matcher.source[i];
+
+                var lenDiff float64 = math.Abs( float64(len(nameRunes) - len(item.normalisedRunes)) );
+                if lenDiff < float64(maxScore) {
+
+                    var score int = levenshtein.DistanceForStrings(
+                        nameRunes,
+                        item.normalisedRunes,
+                        levenshtein.Options{
+                            InsCost: 1,
+                            DelCost: 1,
+                            SubCost: 1,
+                            Matches: levenshtein.DefaultOptions.Matches,
+                        },
+                    );
+
+                    if ( score < maxScore ){
+                        item.Score = score;
+                        matchChan <- i;
+                        *currentN++;
+                    }
+                }
+            }
+            wg.Done();
+        }( ( g * groupSize ), ( g * groupSize ) + groupSize, matchChan, matcher, &n );
     }
+    wg.Wait();
+
 
     fmt.Println( "took: %d", makeTimestamp() - then );
+    close( matchChan );
+    var i int = 0;
+    var matches []Datum = make([]Datum, len(matcher.source));
+    for m := range matchChan {
+        matches[i] = matcher.source[m];
+        i++;
+    }
 
     return sortByScore( matches[0:n] );
 }
