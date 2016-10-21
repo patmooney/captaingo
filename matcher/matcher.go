@@ -6,6 +6,7 @@ import (
     "encoding/json"
     "github.com/davecgh/go-spew/spew"
     "github.com/texttheater/golang-levenshtein/levenshtein"
+    "sort"
 //    "fmt"
 );
 
@@ -40,6 +41,7 @@ type Datum struct {
     Id          string `json:"id"`
     Keywords    []string `json:"keywords"`
     Normalised  string `json:"normalised_name"`
+    Score       int `json:"score"`
 };
 
 type Matcher struct {
@@ -100,13 +102,47 @@ func ( matcher *Matcher ) Match ( name string, keywords []string ) []Datum {
                 Matches: levenshtein.DefaultOptions.Matches,
             },
         );
-        // fmt.Printf( "%s: %d", item.Normalised, score );
         if ( score < 3 ){
+            item.Score = score;
             matches[n] = item;
             n++;
         }
     }
-    return matches;
+    return sortByScore( matches[0:n] );
+}
+
+type sortedMatches struct {
+    sort.Interface
+    m []Datum
+    s []int
+};
+
+func (sm *sortedMatches) Len() int {
+    return len(sm.m)
+}
+
+func (sm *sortedMatches) Less(i, j int) bool {
+    return sm.s[i] < sm.s[j]
+}
+
+func (sm *sortedMatches) Swap(i, j int) {
+    sm.s[i], sm.s[j] = sm.s[j], sm.s[i];
+    sm.m[i], sm.m[j] = sm.m[j], sm.m[i];
+}
+
+func sortByScore ( matches []Datum ) []Datum {
+
+    var sm sortedMatches = sortedMatches{
+        m: matches,
+        s: make([]int, len(matches)),
+    };
+
+    for i, datum := range matches {
+        sm.s[i] = datum.Score;
+    }
+
+    sort.Sort( &sm );
+    return sm.m;
 }
 
 func checkErr ( err error ) {

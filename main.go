@@ -6,8 +6,9 @@ import (
     "net/http"
     "github.com/patmooney/captaingo/matcher"
     "time"
+    "encoding/json"
+    "net/url"
     "fmt"
-    "strings"
 );
 
 /*
@@ -94,6 +95,11 @@ import (
 
 var captain matcher.Matcher;
 
+type SingleResponse struct {
+    Total int `json:"total"`
+    Matches []matcher.Datum `json:"matches"`
+};
+
 func main () {
     var filenamePtr *string = flag.String( "source", "", "filename from which to source data" );
     flag.Parse();
@@ -104,10 +110,15 @@ func main () {
 
     captain = matcher.NewMatcher( *filenamePtr );
 
-    http.HandleFunc( "/bar", func(w http.ResponseWriter, r *http.Request) {
-        keyword := strings.ToLower( r.FormValue("q") );
-        var datum []matcher.Datum = captain.Match(keyword, []string{});
-        w.Write( []byte(fmt.Sprintf( "%s - %s", datum[0].Name, datum[0].Id )) );
+    http.HandleFunc( "/match", func(w http.ResponseWriter, r *http.Request) {
+
+        if r.Method == "GET" {
+            handleGet( w, r );
+        } else if r.Method == "POST" {
+            // handle JSON post - multiple queries
+        } else {
+            w.WriteHeader( http.StatusMethodNotAllowed );
+        }
     });
 
     s := &http.Server{
@@ -119,4 +130,40 @@ func main () {
     log.Fatal(s.ListenAndServe())
 }
 
+func handleGet ( w http.ResponseWriter, r *http.Request ) {
+    uri, _ := url.Parse(r.URL.String());
+    var queryParams url.Values = uri.Query();
 
+    var query string = queryParams.Get("q");
+    var keywords []string = queryParams["keywords"];
+
+    if query == "" {
+        replyBadRequest(w, "q is a required parameter");
+        return;
+    }
+
+    var datum []matcher.Datum = captain.Match(query, keywords);
+
+    json, err := json.Marshal(SingleResponse{
+        Total: len(datum),
+        Matches: datum,
+    });
+
+    fmt.Printf( "Got Query: %s, keywords: %#v, found %d results\n", query, keywords, len(datum) );
+
+    if err != nil {
+        w.WriteHeader( http.StatusInternalServerError );
+        w.Write( []byte("Internal Server Error") );
+        log.Fatal(err);
+    }
+
+    w.Header().Set( "Content-Type", "application/json");
+    w.WriteHeader( http.StatusOK );
+
+    w.Write( json );
+}
+
+func replyBadRequest ( w http.ResponseWriter, err string ) {
+    w.WriteHeader( http.StatusBadRequest );
+    w.Write( []byte( err ) );
+}
