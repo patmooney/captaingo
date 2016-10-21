@@ -105,23 +105,18 @@ func ( matcher *Matcher ) Match ( name string, keywords []string, maxScore int )
     var nameRunes []rune = []rune(name);
     var wg sync.WaitGroup;
     var groupSize = int( len(matcher.source) / 4 );
-    matchChan := make(chan int, 100);
-
     var n int = 0;
+    var matches []Datum = make([]Datum, len(matcher.source));
 
     for g := 0; g < 4; g++ {
 
         wg.Add(1);
 
-        go func ( start int, max int, matchChan chan int, matcher *Matcher, currentN *int ) {
+        go func ( start int, max int ) {
             if max > len(matcher.source) {
                 max = len(matcher.source);
             }
             for i := start; i < max; i++ {
-
-                if ( *currentN >= 100 ){
-                    break;
-                }
 
                 var item Datum = matcher.source[i];
 
@@ -141,26 +136,17 @@ func ( matcher *Matcher ) Match ( name string, keywords []string, maxScore int )
 
                     if ( score < maxScore ){
                         item.Score = score;
-                        matchChan <- i;
-                        *currentN++;
+                        matches[n] = item;
+                        n++;
                     }
                 }
             }
             wg.Done();
-        }( ( g * groupSize ), ( g * groupSize ) + groupSize, matchChan, matcher, &n );
+        }( ( g * groupSize ), ( g * groupSize ) + groupSize );
     }
     wg.Wait();
 
-
     fmt.Println( "took: %d", makeTimestamp() - then );
-    close( matchChan );
-    var i int = 0;
-    var matches []Datum = make([]Datum, len(matcher.source));
-    for m := range matchChan {
-        matches[i] = matcher.source[m];
-        i++;
-    }
-
     return sortByScore( matches[0:n] );
 }
 
