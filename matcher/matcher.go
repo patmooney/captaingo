@@ -45,6 +45,7 @@ type Datum struct {
     Keywords        []string `json:"keywords"`
     Normalised      string `json:"normalised_name"`
     normalisedRunes []rune
+    runeLength      float64
     Score           int `json:"score"`
 };
 
@@ -91,6 +92,7 @@ func loadSource ( rawJson []byte ) []Datum {
     fmt.Println("Runification...");
     for i, item := range source {
         source[i].normalisedRunes = []rune(item.Normalised);
+        source[i].runeLength = float64(len( source[i].normalisedRunes ));
     }
 
     return source;
@@ -107,6 +109,15 @@ func ( matcher *Matcher ) Match ( name string, keywords []string, maxScore int )
     var groupSize = int( len(matcher.source) / 4 );
     var n int = 0;
     var matches []Datum = make([]Datum, len(matcher.source));
+    var nameLength = float64(len(nameRunes));
+    var floatMaxScore = float64(maxScore);
+    var levenshteinOptions = levenshtein.Options{
+        InsCost: 1,
+        DelCost: 1,
+        SubCost: 1,
+        Matches: levenshtein.DefaultOptions.Matches,
+    };
+
 
     for g := 0; g < 4; g++ {
 
@@ -118,20 +129,18 @@ func ( matcher *Matcher ) Match ( name string, keywords []string, maxScore int )
             }
             for i := start; i < max; i++ {
 
+
                 var item Datum = matcher.source[i];
 
-                var lenDiff float64 = math.Abs( float64(len(nameRunes) - len(item.normalisedRunes)) );
-                if lenDiff < float64(maxScore) {
+                var lenDiff float64 = math.Abs( nameLength - item.runeLength );
+
+                // fmt.Printf( "%d - %d - %s - %s\n", lenDiff, floatMaxScore, nameRunes, item.normalisedRunes );
+                if lenDiff < floatMaxScore {
 
                     var score int = levenshtein.DistanceForStrings(
                         nameRunes,
                         item.normalisedRunes,
-                        levenshtein.Options{
-                            InsCost: 1,
-                            DelCost: 1,
-                            SubCost: 1,
-                            Matches: levenshtein.DefaultOptions.Matches,
-                        },
+                        levenshteinOptions,
                     );
 
                     if ( score < maxScore ){
