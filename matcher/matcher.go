@@ -5,7 +5,6 @@ import (
     "log"
     "encoding/json"
     "github.com/davecgh/go-spew/spew"
-    "github.com/texttheater/golang-levenshtein/levenshtein"
     "sort"
     "math"
     "time"
@@ -52,7 +51,9 @@ type Datum struct {
 type Matcher struct {
     source []Datum
     names []string
-}
+};
+
+var keywordIndex map[string][]int;
 
 // Names returns a []string of all Names in the source data
 func ( matcher *Matcher ) Names () []string {
@@ -85,6 +86,7 @@ func ( matcher *Matcher ) SetSource ( rawJson []byte ) {
 func loadSource ( rawJson []byte ) []Datum {
 
     var source []Datum;
+    keywordIndex = make(map[string][]int);
 
     err := json.Unmarshal( rawJson, &source );
     checkErr( err );
@@ -93,6 +95,9 @@ func loadSource ( rawJson []byte ) []Datum {
     for i, item := range source {
         source[i].normalisedRunes = []rune(item.Normalised);
         source[i].runeLength = float64(len( source[i].normalisedRunes ));
+        for _, keyword := range source[i].Keywords {
+            keywordIndex[keyword] = append( keywordIndex[keyword], i );
+        }
     }
 
     return source;
@@ -103,21 +108,60 @@ func loadSource ( rawJson []byte ) []Datum {
 // possible matches each, will only find the 
 func ( matcher *Matcher ) Match ( name string, keywords []string, maxScore int ) []Datum {
 
-    then := makeTimestamp();
     var nameRunes []rune = []rune(name);
+    var nameLength = float64(len(nameRunes));
+
+    var subSet []int = matcher.keywordMatch( keywords );
+    if len(subSet)  > 0 {
+        return matcher.matchSubSet( nameRunes, nameLength, subSet, maxScore );
+    }
+
+    return matcher.matchAll( nameRunes, nameLength, maxScore );
+}
+
+func ( matcher *Matcher ) keywordMatch ( keywords []string ) []int {
+    var subSet []int;
+
+    for _, keyword := range keywords {
+        subSet = append( subSet, keywordIndex[keyword]... );
+    }
+
+    return subSet;
+}
+
+func ( matcher *Matcher ) matchSubSet ( nameRunes []rune, nameLength float64, subSet []int, maxScore int ) []Datum {
+
+    var n int = 0;
+    var matches []Datum = make([]Datum, len(matcher.source));
+    var floatMaxScore = float64(maxScore);
+
+    for _, i := range subSet {
+        var item Datum = matcher.source[i];
+        var lenDiff float64 = math.Abs( nameLength - item.runeLength );
+
+        // fmt.Printf( "%d - %d - %s - %s\n", lenDiff, floatMaxScore, nameRunes, item.normalisedRunes );
+        if lenDiff < floatMaxScore {
+
+            var score int = getDistance( nameRunes, item.normalisedRunes );
+            if ( score < maxScore ){
+                item.Score = score;
+                matches[n] = item;
+                n++;
+            }
+        }
+    }
+
+    return sortByScore( matches[0:n] );
+}
+
+
+func ( matcher *Matcher ) matchAll ( nameRunes []rune, nameLength float64, maxScore int ) []Datum {
+
     var wg sync.WaitGroup;
     var groupSize = int( len(matcher.source) / 4 );
     var n int = 0;
     var matches []Datum = make([]Datum, len(matcher.source));
-    var nameLength = float64(len(nameRunes));
     var floatMaxScore = float64(maxScore);
-    var levenshteinOptions = levenshtein.Options{
-        InsCost: 1,
-        DelCost: 1,
-        SubCost: 1,
-        Matches: levenshtein.DefaultOptions.Matches,
-    };
-
 
     for g := 0; g < 4; g++ {
 
@@ -129,20 +173,13 @@ func ( matcher *Matcher ) Match ( name string, keywords []string, maxScore int )
             }
             for i := start; i < max; i++ {
 
-
                 var item Datum = matcher.source[i];
-
                 var lenDiff float64 = math.Abs( nameLength - item.runeLength );
 
                 // fmt.Printf( "%d - %d - %s - %s\n", lenDiff, floatMaxScore, nameRunes, item.normalisedRunes );
                 if lenDiff < floatMaxScore {
 
-                    var score int = levenshtein.DistanceForStrings(
-                        nameRunes,
-                        item.normalisedRunes,
-                        levenshteinOptions,
-                    );
-
+                    var score int = getDistance( nameRunes, item.normalisedRunes );
                     if ( score < maxScore ){
                         item.Score = score;
                         matches[n] = item;
@@ -155,7 +192,6 @@ func ( matcher *Matcher ) Match ( name string, keywords []string, maxScore int )
     }
     wg.Wait();
 
-    fmt.Println( "took: %d", makeTimestamp() - then );
     return sortByScore( matches[0:n] );
 }
 

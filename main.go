@@ -132,6 +132,9 @@ func main () {
 }
 
 func handleGet ( w http.ResponseWriter, r *http.Request ) {
+
+    then := makeTimestamp();
+
     uri, _ := url.Parse(r.URL.String());
     var queryParams url.Values = uri.Query();
 
@@ -150,8 +153,6 @@ func handleGet ( w http.ResponseWriter, r *http.Request ) {
         Matches: datum,
     });
 
-    fmt.Printf( "Got Query: %s, keywords: %#v, found %d results\n", query, keywords, len(datum) );
-
     if err != nil {
         w.WriteHeader( http.StatusInternalServerError );
         w.Write( []byte("Internal Server Error") );
@@ -162,9 +163,15 @@ func handleGet ( w http.ResponseWriter, r *http.Request ) {
     w.WriteHeader( http.StatusOK );
 
     w.Write( json );
+
+    fmt.Printf( "q: %s, kw: %#v, found: %d, took: %d\n", query, keywords, len(datum), makeTimestamp() - then );
 }
 
 func replyBadRequest ( w http.ResponseWriter, err string ) {
     w.WriteHeader( http.StatusBadRequest );
     w.Write( []byte( err ) );
+}
+
+func makeTimestamp() int64 {
+    return time.Now().UnixNano() / int64(time.Millisecond)
 }

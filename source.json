@@ -1,5 +1,8 @@
 [
-    { "name": "City of London", "normalised_name": "city of london", "id": "12345", "keywords": [ "London", "Greater London", "England", "United Kingdom" ] },
+    { "name": "City of London2", "normalised_name": "cityof london", "id": "12345", "keywords": [ "London", "Greater London", "England", "United Kingdom" ] },
+    { "name": "City of London3", "normalised_name": "cityf london", "id": "12345", "keywords": [ "London", "Greater London", "England", "United Kingdom" ] },
+    { "name": "City of London1", "normalised_name": "city of london", "id": "12345", "keywords": [ "London", "Greater London", "England", "United Kingdom" ] },
+    { "name": "City of London4", "normalised_name": "city london", "id": "12345", "keywords": [ "London", "Greater London", "England", "United Kingdom" ] },
     { "name": "Beijing", "normalised_name": "beijing", "id": "aabbcc", "keywords": [ "China" ] },
     { "name": "北京", "normalised_name": "北京", "id": "aabbcc", "keywords": [ "China" ] }
 ]
