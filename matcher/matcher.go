@@ -54,6 +54,7 @@ type Matcher struct {
 };
 
 var keywordIndex map[string][]int;
+var algorithms []func( []rune, []rune ) (int);
 
 // Names returns a []string of all Names in the source data
 func ( matcher *Matcher ) Names () []string {
@@ -74,6 +75,12 @@ func NewMatcher ( filename string ) Matcher {
 
     rawJson, err := ioutil.ReadFile( filename );
     checkErr( err );
+
+    if len( algorithms ) == 0 {
+        RegisterAlgorithm(func ( nameRunes []rune, sourceRunes []rune ) (int) {
+            return algorithms[0]( nameRunes, sourceRunes );
+        });
+    }
 
     return Matcher { source: loadSource( rawJson ) };
 }
@@ -129,6 +136,15 @@ func ( matcher *Matcher ) keywordMatch ( keywords []string ) []int {
     return subSet;
 }
 
+/*
+    if the user of this package was to also import a package which
+    called this during it's init() func, then it's callback would
+    be the algorithm used
+*/
+func RegisterAlgorithm ( callback func( []rune, []rune ) (int) ) {
+    algorithms = append( algorithms, callback );
+}
+
 func ( matcher *Matcher ) matchSubSet ( nameRunes []rune, nameLength float64, subSet []int, maxScore int ) []Datum {
 
     var n int = 0;
@@ -142,7 +158,7 @@ func ( matcher *Matcher ) matchSubSet ( nameRunes []rune, nameLength float64, su
         // fmt.Printf( "%d - %d - %s - %s\n", lenDiff, floatMaxScore, nameRunes, item.normalisedRunes );
         if lenDiff < floatMaxScore {
 
-            var score int = getDistance( nameRunes, item.normalisedRunes );
+            var score int = algorithms[0]( nameRunes, item.normalisedRunes );
             if ( score < maxScore ){
                 item.Score = score;
                 matches[n] = item;
