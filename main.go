@@ -9,6 +9,7 @@ import (
     "net/url"
     "fmt"
     "encoding/json"
+    _ "github.com/patmooney/captaingo/matcher/algorithm/levenshtein"
 );
 
 /*
@@ -137,7 +138,7 @@ func main () {
         WriteTimeout:   10 * time.Second,
         MaxHeaderBytes: 1 << 20,
     }
-    fmt.Println("Starting server...");
+    log.Println("Starting server...");
     log.Fatal(s.ListenAndServe())
 }
 
@@ -178,7 +179,7 @@ func handleGet ( w http.ResponseWriter, r *http.Request ) {
 
     w.Write( json );
 
-    fmt.Printf( "single: %dms\n", makeTimestamp() - then );
+    log.Printf( "single: %dms\n", makeTimestamp() - then );
 }
 
 func handlePost ( w http.ResponseWriter, r *http.Request ) {
@@ -222,7 +223,7 @@ func handlePost ( w http.ResponseWriter, r *http.Request ) {
 
     w.Write( json );
 
-    fmt.Printf( "Multi: %d queries in %dms\n", len( requestJson.Queries ), makeTimestamp() - then );
+    log.Printf( "Multi: %d queries in %dms\n", len( requestJson.Queries ), makeTimestamp() - then );
 }
 
 func replyBadRequest ( w http.ResponseWriter, err string ) {

@@ -8,7 +8,6 @@ import (
     "sort"
     "math"
     "time"
-    "fmt"
     "sync"
 );
 
@@ -54,7 +53,7 @@ type Matcher struct {
 };
 
 var keywordIndex map[string][]int;
-var algorithms []func( []rune, []rune ) (int);
+var algorithm func( []rune, []rune ) (int);
 
 // Names returns a []string of all Names in the source data
 func ( matcher *Matcher ) Names () []string {
@@ -76,10 +75,10 @@ func NewMatcher ( filename string ) Matcher {
     rawJson, err := ioutil.ReadFile( filename );
     checkErr( err );
 
-    if len( algorithms ) == 0 {
-        RegisterAlgorithm(func ( nameRunes []rune, sourceRunes []rune ) (int) {
-            return algorithms[0]( nameRunes, sourceRunes );
-        });
+    if algorithm == nil {
+        algorithm = func ( nameRunes []rune, sourceRunes []rune ) (int) {
+            return getDistance( nameRunes, sourceRunes );
+        };
     }
 
     return Matcher { source: loadSource( rawJson ) };
@@ -98,7 +97,7 @@ func loadSource ( rawJson []byte ) []Datum {
     err := json.Unmarshal( rawJson, &source );
     checkErr( err );
 
-    fmt.Println("Runification...");
+    log.Println("Runification...");
     for i, item := range source {
         source[i].normalisedRunes = []rune(item.Normalised);
         source[i].runeLength = float64(len( source[i].normalisedRunes ));
@@ -142,7 +141,7 @@ func ( matcher *Matcher ) keywordMatch ( keywords []string ) []int {
     be the algorithm used
 */
 func RegisterAlgorithm ( callback func( []rune, []rune ) (int) ) {
-    algorithms = append( algorithms, callback );
+    algorithm = callback;
 }
 
 func ( matcher *Matcher ) matchSubSet ( nameRunes []rune, nameLength float64, subSet []int, maxScore int ) []Datum {
@@ -155,10 +154,9 @@ func ( matcher *Matcher ) matchSubSet ( nameRunes []rune, nameLength float64, su
         var item Datum = matcher.source[i];
         var lenDiff float64 = math.Abs( nameLength - item.runeLength );
 
-        // fmt.Printf( "%d - %d - %s - %s\n", lenDiff, floatMaxScore, nameRunes, item.normalisedRunes );
         if lenDiff < floatMaxScore {
 
-            var score int = algorithms[0]( nameRunes, item.normalisedRunes );
+            var score int = algorithm( nameRunes, item.normalisedRunes );
             if ( score < maxScore ){
                 item.Score = score;
                 matches[n] = item;
@@ -192,10 +190,9 @@ func ( matcher *Matcher ) matchAll ( nameRunes []rune, nameLength float64, maxSc
                 var item Datum = matcher.source[i];
                 var lenDiff float64 = math.Abs( nameLength - item.runeLength );
 
-                // fmt.Printf( "%d - %d - %s - %s\n", lenDiff, floatMaxScore, nameRunes, item.normalisedRunes );
                 if lenDiff < floatMaxScore {
 
-                    var score int = getDistance( nameRunes, item.normalisedRunes );
+                    var score int = algorithm( nameRunes, item.normalisedRunes );
                     if ( score < maxScore ){
                         item.Score = score;
                         matches[n] = item;
