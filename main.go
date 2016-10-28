@@ -6,9 +6,9 @@ import (
     "net/http"
     "github.com/patmooney/captaingo/matcher"
     "time"
-    "encoding/json"
     "net/url"
     "fmt"
+    "encoding/json"
 );
 
 /*
@@ -96,8 +96,18 @@ import (
 var captain matcher.Matcher;
 
 type SingleResponse struct {
+    Input matcher.Datum `json:"input"`
     Total int `json:"total"`
     Matches []matcher.Datum `json:"matches"`
+};
+
+type MultiRequest struct {
+    MaxScore int `json:"max_score"`
+    Queries []matcher.Datum `json:"queries"`
+};
+
+type MultiResponse struct {
+    Queries []SingleResponse `json:"queries"`
 };
 
 func main () {
@@ -115,7 +125,7 @@ func main () {
         if r.Method == "GET" {
             handleGet( w, r );
         } else if r.Method == "POST" {
-            // handle JSON post - multiple queries
+            handlePost( w, r );
         } else {
             w.WriteHeader( http.StatusMethodNotAllowed );
         }
@@ -151,6 +161,10 @@ func handleGet ( w http.ResponseWriter, r *http.Request ) {
     json, err := json.Marshal(SingleResponse{
         Total: len(datum),
         Matches: datum,
+        Input: matcher.Datum{
+            Name: query,
+            Keywords: keywords,
+        },
     });
 
     if err != nil {
@@ -164,7 +178,51 @@ func handleGet ( w http.ResponseWriter, r *http.Request ) {
 
     w.Write( json );
 
-    fmt.Printf( "q: %s, kw: %#v, found: %d, took: %d\n", query, keywords, len(datum), makeTimestamp() - then );
+    fmt.Printf( "single: %dms\n", makeTimestamp() - then );
+}
+
+func handlePost ( w http.ResponseWriter, r *http.Request ) {
+
+    then := makeTimestamp();
+
+    var decoder *json.Decoder = json.NewDecoder( r.Body );
+    var requestJson MultiRequest;
+    if err := decoder.Decode( &requestJson ); err != nil {
+        replyBadRequest(w, fmt.Sprintf("Post body is invalid JSON: %s", err));
+        return;
+    }
+
+    var maxScore int = 3;
+    if requestJson.MaxScore > 0 {
+        maxScore = requestJson.MaxScore;
+    }
+
+    var response MultiResponse = MultiResponse{};
+
+    for _, query := range requestJson.Queries {
+        var datum []matcher.Datum = captain.Match(query.Name, query.Keywords, maxScore);
+        var singleResponse SingleResponse = SingleResponse{
+            Total: len(datum),
+            Matches: datum,
+            Input: query,
+        };
+        response.Queries = append( response.Queries, singleResponse );
+    }
+
+    json, err := json.Marshal( response );
+
+    if err != nil {
+        w.WriteHeader( http.StatusInternalServerError );
+        w.Write( []byte("Internal Server Error") );
+        log.Fatal(err);
+    }
+
+    w.Header().Set( "Content-Type", "application/json");
+    w.WriteHeader( http.StatusOK );
+
+    w.Write( json );
+
+    fmt.Printf( "Multi: %d queries in %dms\n", len( requestJson.Queries ), makeTimestamp() - then );
 }
 
 func replyBadRequest ( w http.ResponseWriter, err string ) {
