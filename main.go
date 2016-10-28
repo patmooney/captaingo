@@ -4,11 +4,11 @@ import (
     "flag"
     "log"
     "net/http"
-    "github.com/patmooney/captaingo/matcher"
     "time"
     "net/url"
     "fmt"
     "encoding/json"
+    "github.com/patmooney/captaingo/matcher"
     _ "github.com/patmooney/captaingo/matcher/algorithm/levenshtein"
 );
 

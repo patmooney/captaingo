@@ -76,3 +76,16 @@ Input source should be in format
         },
         ...
     ]
+
+### Algorithm
+
+Matcher uses a simple levenshtein algorithm ( look in matcher/matcher.go ) but offers other option(s)...
+You can use the textheater levenshtein implementation (https://github.com/texttheater/golang-levenshtein) by adding the algorithm plugin into your main import
+
+E.g.
+
+    import (
+        "github.com/patmooney/captaingo/matcher"
+        _ "github.com/patmooney/captaingo/matcher/algorithm/levenshtein"
+    );
+
